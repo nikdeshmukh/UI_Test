@@ -1,0 +1,128 @@
+variables:
+  # Variable below is also used as the name of the agent in the AzDO agent pool
+  # ACI_INSTANCE_NAME: apache-bench-inducer-$(Build.BuildId)
+  ACI_INSTANCE_NAME: jmeter-webdriver-inducer-1
+
+  # Resource group in which the Load inducer ACI instance is created
+  ACI_RESOURCE_GROUP_NAME: "post-artifact-rg"
+
+  # Number of CPUs for the ACI instance
+  NUMBER_OF_CPUS: 2
+
+  # Memory in GB of the ACI Instance
+  MEMORY_GB: 7
+
+  # AzDO PAT token for the ACI Instance to talk to AzDO. Currently passed from pipeline
+  # Can be fetched from Key Vault
+  # AzDO_TOKEN: $(AzDO_TOKEN)
+
+  # The AzDO Organization name whose agent pool the ACI instance will join. Currently passed from pipeline
+  # Can be fetched from Key Vault
+  # AzDO_ORGANIZATION: $(AzDO_ORGANIZATION)
+
+  # The Agent Pool Name for the ACI instance to Join
+  AzDO_POOL: jmeter-webdriver
+
+  # The Container Image image from docker hub to be used by the AzDO Agent as its base image
+  # AzDO_AGENT_IMAGE: "microsoft/vsts-agent"
+  AzDO_AGENT_IMAGE: "mcr.microsoft.com/azure-pipelines/vsts-agent:ubuntu-16.04-docker-18.06.1-ce-standard"
+
+stages: 
+
+  - stage: initialize_benchmark_testing_infrastructure_in_rg
+    jobs:
+    - job: initialize_benchmark_testing_infrastructure_in_rg
+      pool:
+        vmImage: 'Ubuntu-16.04'
+      steps:
+      - task: AzureCLI@1
+        displayName: "create load test infra in resource group"
+        inputs:
+          azureSubscription: 'jmeter-webdriver-rg'
+          scriptLocation: 'inlineScript'
+          inlineScript: |
+            CURRENT_ACI_COUNT=$(az container list -o table | grep $ACI_INSTANCE_NAME | grep $ACI_RESOURCE_GROUP_NAME | wc -l)
+            if [ $CURRENT_ACI_COUNT -gt 0 ]; 
+            then 
+              echo "ACI instance for the release already exists";
+            else 
+              echo "ACI instance does not exist. Creating .......";
+              az container create \
+              --name $(ACI_INSTANCE_NAME) \
+              --resource-group $(ACI_RESOURCE_GROUP_NAME) \
+              --cpu $(NUMBER_OF_CPUS) \
+              --memory $(MEMORY_GB) \
+              --command-line "/bin/bash -c 'apt-get update && apt-get install -y  default-jdk libxi6 libgconf-2-4 firefox  && mkdir /opt/jmeter && cd /opt/jmeter && wget https://downloads.apache.org//jmeter/binaries/apache-jmeter-5.3.zip && unzip apache-jmeter-5.3.zip && cd  apache-jmeter-5.3 && wget https://jmeter-plugins.org/files/packages/jpgc-webdriver-3.2.zip && unzip jpgc-webdriver-3.2.zip && mkdir -p /usr/share/gecko/bin && cd /usr/share/gecko/bin && wget https://github.com/mozilla/geckodriver/releases/download/v0.27.0/geckodriver-v0.27.0-linux32.tar.gz && tar -xzf geckodriver-v0.27.0-linux32.tar.gz && export DISPLAY=:99  && mkdir -p /jmx && mkdir -p /results && /vsts/start.sh'" \
+              --image $(AzDO_AGENT_IMAGE) -e VSTS_TOKEN=$(AzDO_TOKEN) VSTS_ACCOUNT=$(AzDO_ORGANIZATION) VSTS_POOL=$(AzDO_POOL) VSTS_AGENT=$(ACI_INSTANCE_NAME)
+              
+            fi
+
+  - stage: execute_Jmeter_Webdriver_test_and_publish_report
+    jobs:
+    - job: execute_JMeter_Webdriver_tests
+      pool: $(AzDO_POOL)
+      steps:
+      - script: |
+          # echo "Execute JMeter + Webdriver Tests"
+          # mkdir -p $(System.DefaultWorkingDirectory)/to-publish
+          # /opt/jmeter/apache-jmeter-5.3/bin/jmeter -Dwebdriver.gecko.driver=/usr/share/gecko/bin/geckodriver -n -l  $(System.DefaultWorkingDirectory)/to-publish/results.jtl  -t $(System.DefaultWorkingDirectory)/jmx/jmeter-webdriver.jmx -e -o $(System.DefaultWorkingDirectory)/to-publish/jmeter-reports
+          set -x
+          export display=:99
+          export PATH="/opt/jmeter/apache-jmeter-5.3/bin:/usr/share/gecko/bin:$PATH"
+          Xvfb :99 &
+          XV_PID=$!
+          echo $(System.DefaultWorkingDirectory)
+          ls -al $(System.DefaultWorkingDirectory)
+          ls -al /
+          mkdir -p $(System.DefaultWorkingDirectory)/results
+          jmeter -n -t $(System.DefaultWorkingDirectory)/jmx/jmeter-webdriver.jmx -l $(System.DefaultWorkingDirectory)/results/scriptresults.jtl -e -o $(System.DefaultWorkingDirectory)/results/jmeter-reports
+          # jmeter -n -t $(System.DefaultWorkingDirectory)/jmx/jmeter-webdriver.jmx -l  $(System.DefaultWorkingDirectory)/results/results.jtl  -e -o $(System.DefaultWorkingDirectory)/results/testresult.jtl
+          kill -9 $XV_PID
+          
+        displayName: 'Execute JMeter Webdriver Tests'
+
+      - script: |
+          echo "Convert JMeter Report to JUNIT format"
+          cd $(System.DefaultWorkingDirectory)/results
+          wget https://raw.githubusercontent.com/Azure-Samples/jmeter-aci-terraform/main/scripts/jtl_junit_converter.py -O $(System.DefaultWorkingDirectory)/junit-onverter.py
+
+          python $(System.DefaultWorkingDirectory)/junit-onverter.py $(System.DefaultWorkingDirectory)/results/scriptresults.jtl $(System.DefaultWorkingDirectory)/results/junit-result.xml
+          
+        displayName: 'Convert Report to JMeter format'
+
+      - task: PublishTestResults@2
+        displayName: 'Publish Test Results'
+        inputs:
+          testResultsFormat: JUnit
+          testResultsFiles: $(System.DefaultWorkingDirectory)/results/junit-result.xml
+          failTaskOnFailedTests: false
+      
+      - task: PublishBuildArtifacts@1
+        displayName: "Publish Build Artifacts"
+        inputs:
+          pathToPublish: '$(System.DefaultWorkingDirectory)/results' 
+          artifactName: 'published-results'
+          failTaskOnFailedTests: false
+
+  - stage: clean_up_test_infrastructure
+    jobs:
+    - job: delete_aci_instance
+      pool:
+        vmImage: 'Ubuntu-16.04'
+      steps:
+      - task: AzureCLI@1
+        displayName: "clean up load test infra from private (delete azure container instance)"
+        inputs:
+          azureSubscription: 'jmeter-webdriver-rg'
+          scriptLocation: 'inlineScript'
+          inlineScript: |
+            if [ $(DELETE_TEST_INFRA) == "TRUE" ]; 
+            then 
+              echo "Deleting ACI Instance ......";
+              az container delete --name $(ACI_INSTANCE_NAME) --resource-group $(ACI_RESOURCE_GROUP_NAME) --yes
+            else 
+              echo "Not deleting ACI Instance as per pipeline configuration .......";
+            fi
+
+
+
