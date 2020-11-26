@@ -63,9 +63,6 @@ stages:
       pool: $(AzDO_POOL)
       steps:
       - script: |
-          # echo "Execute JMeter + Webdriver Tests"
-          # mkdir -p $(System.DefaultWorkingDirectory)/to-publish
-          # /opt/jmeter/apache-jmeter-5.3/bin/jmeter -Dwebdriver.gecko.driver=/usr/share/gecko/bin/geckodriver -n -l  $(System.DefaultWorkingDirectory)/to-publish/results.jtl  -t $(System.DefaultWorkingDirectory)/jmx/jmeter-webdriver.jmx -e -o $(System.DefaultWorkingDirectory)/to-publish/jmeter-reports
           set -x
           export display=:99
           export PATH="/opt/jmeter/apache-jmeter-5.3/bin:/usr/share/gecko/bin:$PATH"
@@ -76,7 +73,6 @@ stages:
           ls -al /
           mkdir -p $(System.DefaultWorkingDirectory)/results
           jmeter -n -t $(System.DefaultWorkingDirectory)/jmx/jmeter-webdriver.jmx -l $(System.DefaultWorkingDirectory)/results/scriptresults.jtl -e -o $(System.DefaultWorkingDirectory)/results/jmeter-reports
-          # jmeter -n -t $(System.DefaultWorkingDirectory)/jmx/jmeter-webdriver.jmx -l  $(System.DefaultWorkingDirectory)/results/results.jtl  -e -o $(System.DefaultWorkingDirectory)/results/testresult.jtl
           kill -9 $XV_PID
           
         displayName: 'Execute JMeter Webdriver Tests'
