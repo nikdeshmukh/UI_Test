@@ -1,0 +1,34 @@
+from ubuntu:18.04
+
+# Install packages including xvfb
+RUN apt-get update && apt-get install default-jdk -y && apt-get install  unzip xvfb libxi6 libgconf-2-4 -y 
+# && apt-get -y install google-chrome-stable
+
+RUN mkdir /opt/jmeter && cd /opt/jmeter && apt install wget -y
+
+# Get JMeter
+RUN wget   https://downloads.apache.org//jmeter/binaries/apache-jmeter-5.3.zip && unzip apache-jmeter-5.3.zip
+
+# Install Webdriver plugin
+RUN cd apache-jmeter-5.3 && wget https://jmeter-plugins.org/files/packages/jpgc-webdriver-3.2.zip && unzip jpgc-webdriver-3.2.zip
+
+# Install Chromedriver
+RUN cd /opt/jmeter && mkdir bin && cd bin && wget https://chromedriver.storage.googleapis.com/86.0.4240.22/chromedriver_mac64.zip && unzip chromedriver_mac64.zip
+
+
+
+
+# Install chrome
+RUN  apt update && apt install gnupg2 -y 
+RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub |  apt-key add -
+RUN echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list
+RUN apt update &&  apt install google-chrome-stable -y
+
+# Add JMeter and geckodriver folders to PATH
+ENV PATH="/apache-jmeter-5.3/bin:/opt/jmeter/bin:${PATH}"
+
+# Set xvfb Screen Number
+ENV DISPLAY=:99
+
+RUN chmod +x /opt/jmeter/bin/chromedriver 
+RUN chown root:root /opt/jmeter/bin/chromedriver 
