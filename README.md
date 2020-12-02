@@ -1,6 +1,6 @@
 # Execute JMeter + Webdriver tests
 
-This repo has artifacts supporting the blog post (link to be updated) which demonstrates why and how to execute JMeter+Webdriver tests in the following ways:
+This repo has artifacts supporting the [blog post](https://medium.com/microsoftazure/how-to-monitor-end-user-response-time-of-your-web-applications-using-jmeter-webdriver-4a609cbb4b57) which demonstrates why and how to execute JMeter+Webdriver tests in the following ways:
 
   * Locally
     ![Local Exectution](./images/local-execution.gif)
