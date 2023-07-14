@@ -54,7 +54,7 @@ jobs:
           command: |
             wget -O get-docker.sh https://get.docker.com
             sh get-docker.sh
-            sudo usermod -aG docker root
+            usermod -aG docker root
 
       - run:
           name: Build Docker image
