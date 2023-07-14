@@ -49,18 +49,13 @@ jobs:
             chmod +x /opt/jmeter/bin/geckodriver
             chown root:root /opt/jmeter/bin/geckodriver
 
-      - run:
-          name: Install Docker
-          command: |
-            wget -O get-docker.sh https://get.docker.com
-            sh get-docker.sh
 
 
       - run:
           name: Build Docker image
           command: docker build -t jmeter-webdriver:0.5 .
 
-
+    
       - run:
           name: Run docker container
           command: docker run -it \
