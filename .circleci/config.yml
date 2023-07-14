@@ -61,13 +61,7 @@ jobs:
           name: check Docker version
           command: docker --version
 
-      - run:
-          name: Build Docker image
-          command: docker build -t Docker/jmeter-webdriver:0.5 .
 
-      - run:
-          name: List Docker images
-          command: docker images
 
 
       - run:
