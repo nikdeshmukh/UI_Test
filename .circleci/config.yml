@@ -58,7 +58,7 @@ jobs:
       - setup_remote_docker: 
           version: 22.0.0
           docker_layer_caching: true
-
+          
       - run:
           name: Build Docker image
           command: docker build -t jmeter-webdriver:0.5 .
