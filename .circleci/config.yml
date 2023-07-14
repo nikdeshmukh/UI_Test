@@ -34,7 +34,7 @@ jobs:
       - run:
           name: Add JMeter and geckodriver folders to PATH
           command: |
-            echo 'PATH="/apache-jmeter-5.3/bin:/opt/jmeter/bin:${PATH}"' >> $BASH_ENV
+            echo 'PATH="/apache-jmeter-5.6.2/bin:/opt/jmeter/bin:${PATH}"' >> $BASH_ENV
             source $BASH_ENV
 
       - run:
@@ -61,7 +61,13 @@ jobs:
           name: check Docker version
           command: docker --version
 
+      - run:
+          name: Build Docker image
+          command: docker build -t jmeter-webdriver:0.5 .
 
+      - run:
+          name: List Docker images
+          command: docker images
 
 
       - run:
