@@ -55,17 +55,11 @@ jobs:
             wget -O get-docker.sh https://get.docker.com
             sh get-docker.sh
 
-      - run:
-          name: Change directory to Docker
-          command: cd Docker
 
       - run:
           name: Build Docker image
           command: docker build -t jmeter-webdriver:0.5 .
 
-      - run:
-          name: Move back to directory
-          command: cd .. 
 
       - run:
           name: Run docker container
