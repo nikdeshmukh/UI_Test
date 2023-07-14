@@ -55,6 +55,9 @@ jobs:
             wget -O get-docker.sh https://get.docker.com
             sh get-docker.sh
 
+      - setup_remote_docker: 
+          version: 22.0.0
+          docker_layer_caching: true
 
       - run:
           name: Build Docker image
